@@ -4,17 +4,25 @@ var async = require('async');
 
 var spider = function() {
   var self = this;
-  request('https://news.ycombinator.com', function(error, response, body) {
-    if (!error && response.statusCode == 200) {
-      self.getLinks(body)
-    }
-  })
+
+  this.scrape = function() {
+    request('https://news.ycombinator.com', function(error, response, body) {
+      if (!error && response.statusCode == 200) {
+        self.getLinks(body)
+      }
+    })
+  }
 
   this.getLinks = function(html) {
     var $ = cheerio.load(html);
     var links = $('a');
-    console.log(links)
+
+    async.map(links.map(function(){
+      var href = $(this).attr('href');
+      console.log(href)
+    }))
   }
 }
 
-spider();
+var scraper = new spider();
+scraper.scrape()
