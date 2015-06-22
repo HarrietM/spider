@@ -2,13 +2,22 @@ var request = require('request');
 var cheerio = require('cheerio');
 var async = require('async');
 var fs = require('fs');
+var path = require('path')
 
-var spider = function() {
+var spider = function(site) {
   var self = this;
-  this.queue = [];
+  this.site = site;
 
-  this.scrape = function() {
-    request('https://news.ycombinator.com', function(error, response, body) {
+  this.q = async.queue(function(task, scrape){
+    scrape(task)
+  })
+
+  this.scrape = function(site) {
+    if (site === undefined) {
+      site = self.site;
+    }
+
+    request(site, function(error, response, body) {
       if (!error && response.statusCode == 200) {
         self.getLinks(body)
       }
@@ -21,13 +30,31 @@ var spider = function() {
 
     async.map(links.map(function(){
       var href = $(this).attr('href');
-      self.queue.push(href)
-      fs.appendFile('./links.txt', href +"\n", function(err){
-        if(err) throw err;
-      })
+      if (href && href != self.site){
+        if (self.externalUrl(href)){
+          self.queueLink(href)
+        } else {
+          self.queueLink(self.internalURL(href))
+        }
+      }
     }))
+  }
+
+  this.queueLink = function(href){
+    self.q.push(href, self.scrape)
+    fs.appendFile('./links.txt', href +"\n", function(err){
+      if(err) throw err;
+    })
+  }
+
+  this.externalUrl = function(href){
+    return href.match(/^https?/) !== null;
+  }
+
+  this.internalURL = function(href){
+    return path.normalize(self.site + '/' + href)
   }
 }
 
-var scraper = new spider();
+var scraper = new spider('https://news.ycombinator.com');
 scraper.scrape()
