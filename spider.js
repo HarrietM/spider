@@ -1,9 +1,11 @@
 var request = require('request');
 var cheerio = require('cheerio');
 var async = require('async');
+var fs = require('fs');
 
 var spider = function() {
   var self = this;
+  this.queue = [];
 
   this.scrape = function() {
     request('https://news.ycombinator.com', function(error, response, body) {
@@ -19,7 +21,10 @@ var spider = function() {
 
     async.map(links.map(function(){
       var href = $(this).attr('href');
-      console.log(href)
+      self.queue.push(href)
+      fs.appendFile('./links.txt', href +"\n", function(err){
+        if(err) throw err;
+      })
     }))
   }
 }
