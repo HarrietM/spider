@@ -21,9 +21,7 @@ var spider = function(site, depth) {
     request(site, function(error, response, body) {
       if (!error && response.statusCode == 200) {
         self.getLinks(body)
-        self.q.unshift(site, function(){
-          console.log('finished processing ' + site)
-        })
+        console.log(self.q)
       }
     })
   }
