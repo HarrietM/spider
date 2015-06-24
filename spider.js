@@ -2,11 +2,12 @@ var request = require('request');
 var cheerio = require('cheerio');
 var async = require('async');
 var fs = require('fs');
-var path = require('path')
+var path = require('path');
 
-var spider = function(site) {
+var spider = function(site, depth) {
   var self = this;
   this.site = site;
+  this.depth = depth;
 
   this.q = async.queue(function(task, scrape){
     scrape(task)
@@ -20,6 +21,9 @@ var spider = function(site) {
     request(site, function(error, response, body) {
       if (!error && response.statusCode == 200) {
         self.getLinks(body)
+        self.q.unshift(site, function(){
+          console.log('finished processing ' + site)
+        })
       }
     })
   }
@@ -56,5 +60,5 @@ var spider = function(site) {
   }
 }
 
-var scraper = new spider('https://news.ycombinator.com');
+var scraper = new spider('https://news.ycombinator.com', 5);
 scraper.scrape()
