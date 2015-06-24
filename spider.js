@@ -7,26 +7,30 @@ var path = require('path');
 var spider = function(site, depth) {
   var self = this;
   this.site = site;
-  this.depth = depth;
+  this.depth = 0;
+  this.max_depth = depth;
 
   this.q = async.queue(function(task, scrape){
-    scrape(task)
+    scrape(task);
   })
 
   this.scrape = function(site) {
     if (site === undefined) {
-      site = self.site;
+      var site = {};
+      site.url = self.site.url;
+      site.depth = self.site.depth;
     }
 
-    request(site, function(error, response, body) {
-      if (!error && response.statusCode == 200) {
-        self.getLinks(body)
-        console.log(self.q)
-      }
-    })
+    if(site.depth !== self.max_depth){
+      request(site.url, function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+          self.getLinks(body, site.depth);
+        }
+      })
+    }
   }
 
-  this.getLinks = function(html) {
+  this.getLinks = function(html, depth) {
     var $ = cheerio.load(html);
     var links = $('a');
 
@@ -34,16 +38,15 @@ var spider = function(site, depth) {
       var href = $(this).attr('href');
       if (href && href != self.site){
         if (self.externalUrl(href)){
-          self.queueLink(href)
-        } else {
-          self.queueLink(self.internalURL(href))
+          self.queueLink(href, depth + 1);
+          console.log(depth)
         }
       }
     }))
   }
 
-  this.queueLink = function(href){
-    self.q.push(href, self.scrape)
+  this.queueLink = function(href, depth){
+    self.q.push({url: href, depth: depth}, self.scrape);
     fs.appendFile('./links.txt', href +"\n", function(err){
       if(err) throw err;
     })
@@ -53,10 +56,10 @@ var spider = function(site, depth) {
     return href.match(/^https?/) !== null;
   }
 
-  this.internalURL = function(href){
-    return path.normalize(self.site + '/' + href)
-  }
+  // this.internalURL = function(href){
+  //   return path.normalize(self.site + '/' + href)
+  // }
 }
 
-var scraper = new spider('https://news.ycombinator.com', 5);
+var scraper = new spider({url: 'https://news.ycombinator.com', depth: 0}, 5);
 scraper.scrape()
